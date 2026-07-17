@@ -1,0 +1,1458 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useEffect, useRef, useState } from 'react';
+import { 
+  Calendar, 
+  Clock, 
+  MapPin, 
+  Users, 
+  Send, 
+  Heart, 
+  Compass, 
+  Share2, 
+  Copy, 
+  Mail, 
+  MessageSquare,
+  X,
+  FileText,
+  Check,
+  FileDown,
+  Coins,
+  DollarSign,
+  PlusCircle,
+  Trash2,
+  Filter,
+  Search,
+  Award,
+  TrendingUp
+} from 'lucide-react';
+import couplePortrait from './assets/images/regenerated_image_1784288665996.png';
+
+interface Pledge {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  amount: number;
+  currency: 'SSP' | 'USD';
+  paymentMethod: string;
+  notes: string;
+  date: string;
+}
+
+export default function App() {
+  // Refs for the scroll-based envelope animation
+  const stageRef = useRef<HTMLDivElement>(null);
+  const flapRef = useRef<HTMLDivElement>(null);
+  const sealRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const backRef = useRef<HTMLDivElement>(null);
+  const hintRef = useRef<HTMLDivElement>(null);
+
+  // Sharing Overlay State
+  const [isShareOpen, setIsShareOpen] = useState(false);
+  const [shareLink, setShareLink] = useState('');
+
+  // Toast State
+  const [toastMessage, setToastMessage] = useState('');
+  const [showToast, setShowToast] = useState(false);
+  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Trigger custom toast notification
+  const triggerToast = (msg: string) => {
+    setToastMessage(msg);
+    setShowToast(true);
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
+    toastTimeoutRef.current = setTimeout(() => {
+      setShowToast(false);
+    }, 2600);
+  };
+
+  // Pledge Tracker State
+  const [pledges, setPledges] = useState<Pledge[]>(() => {
+    const saved = localStorage.getItem('gift_asunta_pledges');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (_) {
+        // Fallback
+      }
+    }
+    // Default seed pledges
+    return [
+      {
+        id: '101',
+        name: 'Aban Joseph',
+        email: 'aban.joseph@example.com',
+        phone: '+211 92 123 4567',
+        amount: 500000,
+        currency: 'SSP',
+        paymentMethod: 'Bank Transfer',
+        notes: "May God bless your union! Can't wait to celebrate with you on October 10.",
+        date: '2026-07-15',
+      },
+      {
+        id: '102',
+        name: 'Rebecca Kiden',
+        email: 'rebecca.k@example.com',
+        phone: '+211 91 987 6543',
+        amount: 250,
+        currency: 'USD',
+        paymentMethod: 'Hand Delivery',
+        notes: 'So happy for Gift and Asunta. Much love and blessings!',
+        date: '2026-07-16',
+      },
+      {
+        id: '103',
+        name: 'Emmanuel Lado',
+        email: 'lado.emma@example.com',
+        phone: '+211 95 555 4433',
+        amount: 150000,
+        currency: 'SSP',
+        paymentMethod: 'Bank Transfer',
+        notes: 'Congratulations on this beautiful milestone! Best wishes for the big day.',
+        date: '2026-07-17',
+      }
+    ];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('gift_asunta_pledges', JSON.stringify(pledges));
+  }, [pledges]);
+
+  const [pledgeName, setPledgeName] = useState('');
+  const [pledgeEmail, setPledgeEmail] = useState('');
+  const [pledgePhone, setPledgePhone] = useState('');
+  const [pledgeAmount, setPledgeAmount] = useState('');
+  const [pledgeCurrency, setPledgeCurrency] = useState<'SSP' | 'USD'>('USD');
+  const [pledgeMethod, setPledgeMethod] = useState('Hand Delivery');
+  const [pledgeNotes, setPledgeNotes] = useState('');
+  const [pledgeFilter, setPledgeFilter] = useState<'ALL' | 'USD' | 'SSP'>('ALL');
+  const [pledgeSearch, setPledgeSearch] = useState('');
+
+  const totalUSD = pledges
+    .filter((p) => p.currency === 'USD')
+    .reduce((sum, p) => sum + p.amount, 0);
+
+  const totalSSP = pledges
+    .filter((p) => p.currency === 'SSP')
+    .reduce((sum, p) => sum + p.amount, 0);
+
+  const targetUSD = 15000;
+  const targetSSP = 6000000;
+
+  const percentUSD = Math.min(100, Math.round((totalUSD / targetUSD) * 100));
+  const percentSSP = Math.min(100, Math.round((totalSSP / targetSSP) * 100));
+
+  const filteredPledges = pledges.filter((p) => {
+    const matchesFilter = pledgeFilter === 'ALL' || p.currency === pledgeFilter;
+    const matchesSearch = p.name.toLowerCase().includes(pledgeSearch.toLowerCase()) || 
+                          p.notes.toLowerCase().includes(pledgeSearch.toLowerCase());
+    return matchesFilter && matchesSearch;
+  });
+
+  const handleAddPledge = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pledgeName.trim()) {
+      triggerToast('Please enter your name.');
+      return;
+    }
+    const amt = parseFloat(pledgeAmount);
+    if (isNaN(amt) || amt <= 0) {
+      triggerToast('Please enter a valid amount greater than 0.');
+      return;
+    }
+
+    const newPledge: Pledge = {
+      id: String(Date.now()),
+      name: pledgeName.trim(),
+      email: pledgeEmail.trim(),
+      phone: pledgePhone.trim(),
+      amount: amt,
+      currency: pledgeCurrency,
+      paymentMethod: pledgeMethod,
+      notes: pledgeNotes.trim(),
+      date: new Date().toISOString().split('T')[0],
+    };
+
+    setPledges((prev) => [newPledge, ...prev]);
+    triggerToast('Pledge successfully registered! Thank you!');
+    
+    // Clear form inputs
+    setPledgeName('');
+    setPledgeEmail('');
+    setPledgePhone('');
+    setPledgeAmount('');
+    setPledgeNotes('');
+  };
+
+  const handleDeletePledge = (id: string) => {
+    if (confirm('Are you sure you want to delete this pledge?')) {
+      setPledges((prev) => prev.filter((p) => p.id !== id));
+      triggerToast('Pledge removed.');
+    }
+  };
+
+  const downloadPledgeDoc = (pledge: Pledge) => {
+    const content = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+      <head>
+        <title>Pledge Certificate - ${pledge.name}</title>
+        <!--[if gte mso 9]>
+        <xml>
+          <w:WordDocument>
+            <w:View>Print</w:View>
+            <w:Zoom>100</w:Zoom>
+          </w:WordDocument>
+        </xml>
+        <![endif]-->
+        <style>
+          body {
+            font-family: 'Georgia', serif;
+            color: #1B2B22;
+            background-color: #FBF6EA;
+            padding: 40px;
+          }
+          .header {
+            text-align: center;
+            margin-bottom: 30px;
+          }
+          .title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #123C2E;
+          }
+          .subtitle {
+            font-size: 16px;
+            color: #8B7239;
+            margin-top: 5px;
+          }
+          .divider {
+            width: 100px;
+            height: 2px;
+            background-color: #CDA45E;
+            margin: 20px auto;
+          }
+          .card {
+            border: 2px solid #CDA45E;
+            padding: 30px;
+            background-color: #ffffff;
+          }
+          .row {
+            margin-bottom: 15px;
+            font-size: 14px;
+          }
+          .label {
+            font-weight: bold;
+            color: #8B7239;
+          }
+          .value {
+            color: #1B2B22;
+          }
+          .footer {
+            margin-top: 50px;
+            text-align: center;
+            font-size: 12px;
+            color: #4B5B50;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="card">
+          <div class="header">
+            <div class="title">Gift & Asunta Wedding Fundraiser</div>
+            <div class="subtitle">Official Pledge Certificate</div>
+            <div class="divider"></div>
+          </div>
+          <div class="row">
+            <span class="label">Pledge Reference:</span> <span class="value">GA-2026-${pledge.id}</span>
+          </div>
+          <div class="row">
+            <span class="label">Pledge Date:</span> <span class="value">${pledge.date}</span>
+          </div>
+          <div class="row">
+            <span class="label">Contributor Name:</span> <span class="value">${pledge.name}</span>
+          </div>
+          <div class="row">
+            <span class="label">Email Address:</span> <span class="value">${pledge.email || 'N/A'}</span>
+          </div>
+          <div class="row">
+            <span class="label">Phone Number:</span> <span class="value">${pledge.phone || 'N/A'}</span>
+          </div>
+          <div class="row">
+            <span class="label">Pledge Amount:</span> <span class="value" style="font-size: 18px; font-weight: bold; color: #123C2E;">${pledge.currency} ${Number(pledge.amount).toLocaleString()}</span>
+          </div>
+          <div class="row">
+            <span class="label">Payment Method:</span> <span class="value">${pledge.paymentMethod}</span>
+          </div>
+          ${pledge.notes ? `
+          <div class="row">
+            <span class="label">Message for the Couple:</span><br/>
+            <span class="value" style="font-style: italic;">"${pledge.notes}"</span>
+          </div>
+          ` : ''}
+          <div class="footer">
+            <p>Thank you for supporting our future. Your generosity is deeply appreciated!</p>
+            <p>Love is the reason. Unity is the mission. You are the family.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+    const blob = new Blob(['\ufeff' + content], { type: 'application/msword' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `GA-Pledge-${pledge.name.replace(/\s+/g, '_')}.doc`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const downloadPledgePdf = (pledge: Pledge) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      triggerToast('Please allow popups to download PDF');
+      return;
+    }
+    const htmlContent = `
+      <html>
+      <head>
+        <title>Pledge Certificate - ${pledge.name}</title>
+        <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+        <style>
+          body {
+            background-color: #F7F2E7;
+            color: #071D17;
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: calc(100vh - 80px);
+          }
+          .certificate {
+            background-color: #FBF6EA;
+            border: 12px double #CDA45E;
+            padding: 40px;
+            width: 100%;
+            max-width: 600px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            position: relative;
+            text-align: center;
+            box-sizing: border-box;
+          }
+          .inner-border {
+            border: 1px solid rgba(205, 164, 94, 0.4);
+            padding: 30px;
+          }
+          .header {
+            margin-bottom: 30px;
+          }
+          .title {
+            font-family: 'Playfair Display', serif;
+            font-size: 28px;
+            font-weight: 700;
+            color: #0E3327;
+            margin-bottom: 10px;
+          }
+          .subtitle {
+            font-family: 'Cormorant Garamond', serif;
+            font-style: italic;
+            font-size: 18px;
+            color: #8B7239;
+            letter-spacing: 1px;
+          }
+          .divider {
+            width: 80px;
+            height: 1px;
+            background-color: #CDA45E;
+            margin: 20px auto;
+          }
+          .details-grid {
+            margin: 30px 0;
+            text-align: left;
+          }
+          .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px dashed rgba(205, 164, 94, 0.25);
+          }
+          .detail-row:last-child {
+            border-bottom: none;
+          }
+          .label {
+            font-weight: 500;
+            color: #8B7239;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+          }
+          .value {
+            font-weight: 600;
+            color: #0E3327;
+            font-size: 13px;
+          }
+          .amount-value {
+            font-size: 16px;
+            color: #123C2E;
+            font-weight: 700;
+          }
+          .notes-container {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: rgba(205, 164, 94, 0.08);
+            border-radius: 8px;
+            font-style: italic;
+            color: #4B5B50;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 16px;
+          }
+          .footer {
+            margin-top: 40px;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 15px;
+            color: #8B7239;
+          }
+          @media print {
+            body {
+              background: none;
+              padding: 0;
+            }
+            .certificate {
+              box-shadow: none;
+              border: 12px double #CDA45E;
+              max-width: 100%;
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="certificate">
+          <div class="inner-border">
+            <div class="header">
+              <div class="title">Gift & Asunta</div>
+              <div class="subtitle">Wedding Platform Launch & Fundraiser</div>
+              <div class="divider"></div>
+              <div style="font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: #CDA45E; margin-top: 10px;">Pledge Receipt Certificate</div>
+            </div>
+            
+            <div class="details-grid">
+              <div class="detail-row">
+                <span class="label">Reference:</span>
+                <span class="value">GA-2026-${pledge.id}</span>
+              </div>
+              <div class="detail-row">
+                <span class="label">Date:</span>
+                <span class="value">${pledge.date}</span>
+              </div>
+              <div class="detail-row">
+                <span class="label">Contributor:</span>
+                <span class="value">${pledge.name}</span>
+              </div>
+              <div class="detail-row">
+                <span class="label">Phone:</span>
+                <span class="value">${pledge.phone || 'N/A'}</span>
+              </div>
+              <div class="detail-row">
+                <span class="label">Email:</span>
+                <span class="value">${pledge.email || 'N/A'}</span>
+              </div>
+              <div class="detail-row">
+                <span class="label">Currency / Amount:</span>
+                <span class="value amount-value">${pledge.currency} ${Number(pledge.amount).toLocaleString()}</span>
+              </div>
+              <div class="detail-row">
+                <span class="label">Fulfillment Method:</span>
+                <span class="value">${pledge.paymentMethod}</span>
+              </div>
+            </div>
+            
+            ${pledge.notes ? `
+            <div class="notes-container">
+              "${pledge.notes}"
+            </div>
+            ` : ''}
+            
+            <div class="footer">
+              <p style="margin: 0; font-weight: 500;">Thank you for your generous support!</p>
+              <p style="margin: 5px 0 0; font-style: italic; font-size: 13px; color: #4B5B50;">"Love is the reason. Unity is the mission. You are the family."</p>
+            </div>
+          </div>
+        </div>
+        <script>
+          window.onload = function() {
+            window.print();
+            setTimeout(function() { window.close(); }, 500);
+          };
+        </script>
+      </body>
+      </html>
+    `;
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
+
+  // Live countdown to Wedding Launch (Sunday, 26 July 2026 at 3:00 PM)
+  const LAUNCH_DATE = new Date(2026, 6, 26, 15, 0, 0); // July is month 6 (0-indexed)
+  const [timeLeft, setTimeLeft] = useState({
+    days: '--',
+    hours: '--',
+    minutes: '--',
+    seconds: '--',
+    isOver: false,
+  });
+
+  // Share messages
+  const shareTitle = "You're Invited — Gift & Asunta Platform Launch";
+  const shareMessage =
+    "💌 You're Invited!\n\n" +
+    "Gift & Asunta — Wedding Launch & Fundraiser Campaign\n" +
+    "🗓 Wedding Launch: Sunday, 26 July 2026 at 3:00 PM\n" +
+    "📍 Watoto Church, Juba\n" +
+    "💒 Wedding Day: Saturday, 10 October 2026\n\n" +
+    "Let's celebrate love, unity, and purpose. Open the invitation:";
+
+  // Set up countdown timer tick
+  useEffect(() => {
+    const tick = () => {
+      const diff = LAUNCH_DATE.getTime() - new Date().getTime();
+      if (diff <= 0) {
+        setTimeLeft({
+          days: '00',
+          hours: '00',
+          minutes: '00',
+          seconds: '00',
+          isOver: true,
+        });
+        return;
+      }
+      const s = Math.floor(diff / 1000);
+      const dVal = Math.floor(s / 86400);
+      const hVal = Math.floor((s % 86400) / 3600);
+      const mVal = Math.floor((s % 3600) / 60);
+      const sVal = s % 60;
+
+      setTimeLeft({
+        days: String(dVal).padStart(2, '0'),
+        hours: String(hVal).padStart(2, '0'),
+        minutes: String(mVal).padStart(2, '0'),
+        seconds: String(sVal).padStart(2, '0'),
+        isOver: false,
+      });
+    };
+
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Scroll envelope progress listener
+  useEffect(() => {
+    const onScroll = () => {
+      const stage = stageRef.current;
+      const flap = flapRef.current;
+      const seal = sealRef.current;
+      const card = cardRef.current;
+      const back = backRef.current;
+      const hint = hintRef.current;
+
+      if (!stage) return;
+
+      const rect = stage.getBoundingClientRect();
+      const total = stage.offsetHeight - window.innerHeight;
+      const scrolled = Math.max(0, Math.min(total, -rect.top));
+      const p = total > 0 ? scrolled / total : 0;
+
+      // flap opens 0 -> 0.38
+      const flapP = Math.max(0, Math.min(1, p / 0.38));
+      const flapAngle = 0 + (-172 - 0) * flapP;
+      if (flap) {
+        flap.style.transform = `rotateX(${flapAngle}deg)`;
+        flap.style.opacity = p > 0.55 ? String(Math.max(0, 1 - (p - 0.55) / 0.15)) : '1';
+      }
+
+      // seal fades/breaks 0.05 -> 0.22
+      const sealP = Math.max(0, Math.min(1, (p - 0.05) / 0.17));
+      if (seal) {
+        seal.style.opacity = String(1 - sealP);
+        const scale = 1 + (0.4 - 1) * sealP;
+        const rotate = 0 + (25 - 0) * sealP;
+        seal.style.transform = `translate(-50%,-50%) scale(${scale}) rotate(${rotate}deg)`;
+      }
+
+      // card rises 0.28 -> 0.85
+      const cardP = Math.max(0, Math.min(1, (p - 0.28) / 0.57));
+      const eased = 1 - Math.pow(1 - cardP, 3);
+      if (card) {
+        card.style.opacity = String(eased);
+        const translateY = 0 + (-78 - 0) * eased;
+        const scale = 0.82 + (1 - 0.82) * eased;
+        card.style.transform = `translate(-50%, ${translateY}%) scale(${scale})`;
+      }
+
+      // envelope back fades late 0.72 -> 1.00
+      const backP = Math.max(0, Math.min(1, (p - 0.72) / 0.28));
+      if (back) {
+        back.style.opacity = String(1 - backP * 0.9);
+      }
+
+      // hint fades out early
+      if (hint) {
+        hint.style.opacity = p > 0.06 ? '0' : '1';
+      }
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    onScroll();
+
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, []);
+
+  // Intersection Observer for scroll reveal effect
+  useEffect(() => {
+    const revealEls = document.querySelectorAll('.reveal');
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting) {
+          e.target.classList.add('in');
+          observer.unobserve(e.target);
+        }
+      });
+    }, { threshold: 0.15 });
+
+    revealEls.forEach((el) => observer.observe(el));
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
+  // Set the share link input on mount
+  useEffect(() => {
+    setShareLink(window.location.href);
+  }, []);
+
+  // Add to calendar helper (generates .ics file download)
+  const handleAddToCalendar = () => {
+    const ics = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Gift and Asunta//Platform Launch//EN',
+      'BEGIN:VEVENT',
+      'UID:gift-asunta-launch-2026@invitation',
+      'DTSTAMP:20260708T000000Z',
+      'DTSTART:20260726T150000',
+      'DTEND:20260726T180000',
+      'SUMMARY:Gift & Asunta — Wedding Launch & Fundraiser Campaign',
+      'DESCRIPTION:Join us as we officially launch the Wedding Platform for Gift & Asunta and kick off our Wedding Fundraiser Campaign. Countdown begins Mon 20 July. Wedding Band announcement Sun 30 August. Wedding Day Sat 10 October 2026.',
+      'LOCATION:Watoto Church, Juba',
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ].join('\r\n');
+
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'Gift-and-Asunta-Wedding-Launch.ics';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    triggerToast('Added to your calendar');
+  };
+
+  // Copy invitation link to clipboard
+  const handleCopyLink = async () => {
+    const url = window.location.href;
+    try {
+      await navigator.clipboard.writeText(url);
+      triggerToast('Link copied — share the joy.');
+    } catch (_) {
+      const input = document.getElementById('shareLinkInput') as HTMLInputElement;
+      if (input) {
+        input.select();
+        try {
+          document.execCommand('copy');
+          triggerToast('Link copied — share the joy.');
+        } catch (__) {
+          triggerToast('Failed to copy link.');
+        }
+      }
+    }
+  };
+
+  // Open & Close Share Overlay
+  const openShare = () => {
+    setIsShareOpen(true);
+    document.body.style.overflow = 'hidden';
+  };
+
+  const closeShare = () => {
+    setIsShareOpen(false);
+    document.body.style.overflow = '';
+  };
+
+  // Social Share Handlers
+  const shareWhatsApp = () => {
+    const text = encodeURIComponent(shareMessage + ' ' + window.location.href);
+    window.open('https://wa.me/?text=' + text, '_blank', 'noopener');
+  };
+
+  const shareEmail = () => {
+    const subject = encodeURIComponent(shareTitle);
+    const body = encodeURIComponent(shareMessage + '\n\n' + window.location.href);
+    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+  };
+
+  const shareNative = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: shareTitle,
+          text: shareMessage,
+          url: window.location.href
+        });
+        closeShare();
+      } catch (_) {
+        // dismissed or error
+      }
+    } else {
+      triggerToast('Native sharing not supported in this browser.');
+    }
+  };
+
+  return (
+    <div>
+      {/* Background grain texture */}
+      <div className="grain"></div>
+
+      {/* ================= ENVELOPE SCROLL STAGE ================= */}
+      <div id="envelope-stage" ref={stageRef}>
+        <div className="stage-sticky">
+          <div className="envelope-wrap" id="envelope">
+            <div className="env-back" ref={backRef}></div>
+
+            {/* Invitation Card (slides out) */}
+            <div className="invite-card" id="card" ref={cardRef}>
+              <div className="text-[11px] tracking-[0.32em] uppercase text-gold-soft mb-3.5 font-sans">
+                You're Invited
+              </div>
+              <div className="font-serif font-semibold text-[clamp(22px,4.6vw,30px)] text-[#16261D] mb-1.5 leading-tight">
+                Gift &amp; Asunta
+              </div>
+              <div className="font-cormorant italic text-[17px] text-[#3C4A40] mb-4.5">
+                Be part of a beautiful beginning
+              </div>
+              <div className="w-[46px] h-[1px] bg-gold-soft mx-auto mb-4.5"></div>
+              <div className="font-serif font-bold text-[clamp(26px,5.6vw,36px)] tracking-wide text-[#16261D] leading-tight">
+                Platform Launch
+              </div>
+              <div className="font-script text-[clamp(28px,6vw,38px)] text-[#9A7B33] mt-0.5">
+                &amp; Wedding Fundraiser
+              </div>
+              <div className="mt-5 text-[12.5px] tracking-widest text-[#4B5B50] uppercase font-sans">
+                Sunday · 26 July 2026 · 3:00 PM · Watoto Church, Juba
+              </div>
+            </div>
+
+            {/* Envelope flap */}
+            <div className="env-flap" id="flap" ref={flapRef}>
+              <svg viewBox="0 0 480 180" preserveAspectRatio="none">
+                <polygon points="0,0 480,0 240,180" fill="#0F3A2B" stroke="rgba(205,164,94,0.35)" strokeWidth="1"/>
+                <polygon points="0,0 480,0 240,178" fill="url(#flapGrad)" />
+                <defs>
+                  <linearGradient id="flapGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#123F2E"/>
+                    <stop offset="100%" stopColor="#0B2A20"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+
+            {/* Wax seal */}
+            <div className="seal" id="seal" ref={sealRef}>
+              <span className="font-serif font-bold text-xl text-[#3A2D0E] tracking-wide">G&amp;A</span>
+            </div>
+          </div>
+
+          {/* Scroll instruction hint */}
+          <div className="stage-hint" id="hint" ref={hintRef}>
+            <span>Scroll to open</span>
+            <div className="chev"></div>
+          </div>
+        </div>
+      </div>
+
+      {/* ================= MAIN CONTENT ================= */}
+      <main className="relative z-10 bg-deep overflow-hidden">
+        
+        {/* Wedding Details Section */}
+        <section className="details-section max-w-[1040px] px-6 py-[120px] mx-auto text-center">
+          <div className="reveal text-[11px] tracking-[0.3em] uppercase text-gold mb-4 opacity-90">
+            The Wedding Launch
+          </div>
+          <h2 className="reveal font-serif font-semibold text-[clamp(26px,4vw,38px)] text-ivory mb-14">
+            Join us as we make it official
+          </h2>
+          
+          <div className="reveal grid grid-cols-1 md:grid-cols-3 gap-[1px] bg-line border border-line rounded-2xl overflow-hidden shadow-xl">
+            {/* Date Card */}
+            <div className="bg-gradient-to-b from-white/5 to-transparent p-10 text-center flex flex-col items-center gap-3.5">
+              <Calendar className="w-6 h-6 text-gold" />
+              <span className="text-[10px] tracking-[0.24em] uppercase text-ivory-dim">Date</span>
+              <span className="font-serif text-xl font-semibold text-ivory">Sunday, 26 July</span>
+              <span className="font-cormorant italic text-base text-gold-light">2026</span>
+            </div>
+            {/* Time Card */}
+            <div className="bg-gradient-to-b from-white/5 to-transparent p-10 text-center flex flex-col items-center gap-3.5">
+              <Clock className="w-6 h-6 text-gold" />
+              <span className="text-[10px] tracking-[0.24em] uppercase text-ivory-dim">Time</span>
+              <span className="font-serif text-xl font-semibold text-ivory">3:00 PM</span>
+              <span className="font-cormorant italic text-base text-gold-light">Sunday afternoon</span>
+            </div>
+            {/* Location Card */}
+            <div className="bg-gradient-to-b from-white/5 to-transparent p-10 text-center flex flex-col items-center gap-3.5">
+              <MapPin className="w-6 h-6 text-gold" />
+              <span className="text-[10px] tracking-[0.24em] uppercase text-ivory-dim">Location</span>
+              <span className="font-serif text-xl font-semibold text-ivory">Watoto Church</span>
+              <span className="font-cormorant italic text-base text-gold-light">Juba</span>
+            </div>
+          </div>
+        </section>
+
+        {/* Live Countdown Timer Section */}
+        <section className="countdown-section max-w-[1040px] px-6 py-[120px] mx-auto text-center">
+          <div className="reveal text-[11px] tracking-[0.3em] uppercase text-gold mb-4 opacity-90">
+            The Countdown
+          </div>
+          <h2 className="reveal font-serif font-semibold text-[clamp(26px,4vw,38px)] text-ivory mb-14" id="cdHeading">
+            {timeLeft.isOver ? 'The Wedding Launch is here' : 'Counting down to the Wedding Launch'}
+          </h2>
+          
+          <div className="reveal flex items-center justify-center gap-1.5 sm:gap-4.5" id="countdown">
+            {/* Days */}
+            <div className="flex flex-col items-center gap-2 min-w-[64px] sm:min-w-[110px] p-4 sm:p-6.5 bg-gradient-to-b from-white/[0.035] to-transparent border border-line rounded-2xl shadow-lg">
+              <span className="font-serif font-semibold text-[clamp(26px,5.4vw,44px)] text-ivory tabular-nums leading-none">
+                {timeLeft.days}
+              </span>
+              <span className="text-[9.5px] tracking-[0.24em] uppercase text-ivory-dim">Days</span>
+            </div>
+            <div className="font-serif text-[clamp(18px,3vw,30px)] text-gold opacity-50 pb-4.5">:</div>
+            {/* Hours */}
+            <div className="flex flex-col items-center gap-2 min-w-[64px] sm:min-w-[110px] p-4 sm:p-6.5 bg-gradient-to-b from-white/[0.035] to-transparent border border-line rounded-2xl shadow-lg">
+              <span className="font-serif font-semibold text-[clamp(26px,5.4vw,44px)] text-ivory tabular-nums leading-none">
+                {timeLeft.hours}
+              </span>
+              <span className="text-[9.5px] tracking-[0.24em] uppercase text-ivory-dim">Hours</span>
+            </div>
+            <div className="font-serif text-[clamp(18px,3vw,30px)] text-gold opacity-50 pb-4.5">:</div>
+            {/* Minutes */}
+            <div className="flex flex-col items-center gap-2 min-w-[64px] sm:min-w-[110px] p-4 sm:p-6.5 bg-gradient-to-b from-white/[0.035] to-transparent border border-line rounded-2xl shadow-lg">
+              <span className="font-serif font-semibold text-[clamp(26px,5.4vw,44px)] text-ivory tabular-nums leading-none">
+                {timeLeft.minutes}
+              </span>
+              <span className="text-[9.5px] tracking-[0.24em] uppercase text-ivory-dim">Minutes</span>
+            </div>
+            <div className="font-serif text-[clamp(18px,3vw,30px)] text-gold opacity-50 pb-4.5">:</div>
+            {/* Seconds */}
+            <div className="flex flex-col items-center gap-2 min-w-[64px] sm:min-w-[110px] p-4 sm:p-6.5 bg-gradient-to-b from-white/[0.035] to-transparent border border-line rounded-2xl shadow-lg">
+              <span className="font-serif font-semibold text-[clamp(26px,5.4vw,44px)] text-ivory tabular-nums leading-none">
+                {timeLeft.seconds}
+              </span>
+              <span className="text-[9.5px] tracking-[0.24em] uppercase text-ivory-dim">Seconds</span>
+            </div>
+          </div>
+
+          <div className="reveal mt-6 font-cormorant italic text-[17px] text-gold-light" id="cdNote">
+            {timeLeft.isOver 
+              ? "Today's the day — join us at Watoto Church, Juba." 
+              : "The official countdown campaign opens Monday, 20 July 2026."}
+          </div>
+        </section>
+
+        {/* Timeline (The Road Ahead) Section */}
+        <section className="timeline-section max-w-[1040px] px-6 py-[120px] mx-auto">
+          <div className="reveal text-[11px] tracking-[0.3em] uppercase text-gold mb-4 opacity-90 text-center">
+            The Road Ahead
+          </div>
+          <h2 className="reveal font-serif font-semibold text-[clamp(26px,4vw,38px)] text-ivory mb-14 text-center">
+            From launch day to the big day
+          </h2>
+
+          <div className="timeline">
+            {/* Item 1 */}
+            <div className="tl-item reveal">
+              <div className="tl-dot"></div>
+              <div className="text-[11px] tracking-[0.22em] uppercase text-gold mb-1.5">Monday, 20 July 2026</div>
+              <h4 className="font-serif font-semibold text-lg text-ivory mb-1.5">Countdown Begins</h4>
+              <p className="font-cormorant text-[16.5px] text-ivory-dim leading-relaxed max-w-[52ch]">
+                The Wedding Launch Countdown opens and runs throughout the week, building toward launch Sunday.
+              </p>
+            </div>
+
+            {/* Item 2 (Key Launch) */}
+            <div className="tl-item key reveal">
+              <div className="tl-dot"></div>
+              <div className="text-[11px] tracking-[0.22em] uppercase text-gold mb-1.5">Sunday, 26 July 2026</div>
+              <h4 className="font-serif font-semibold text-lg text-ivory mb-1.5">Wedding Launch &amp; Fundraiser Kick-Off</h4>
+              <p className="font-cormorant text-[16.5px] text-ivory-dim leading-relaxed max-w-[52ch]">
+                The official launch of the Wedding Platform, following the couple's return from the traditional marriage ceremony in Yei. Join us at Watoto Church, Juba.
+              </p>
+              <span className="inline-block mt-2 text-[10px] tracking-[0.18em] uppercase text-deep bg-gradient-to-b from-gold-light to-gold px-2.5 py-1 rounded-full font-semibold">
+                You're invited
+              </span>
+            </div>
+
+            {/* Item 3 */}
+            <div className="tl-item reveal">
+              <div className="tl-dot"></div>
+              <div className="text-[11px] tracking-[0.22em] uppercase text-gold mb-1.5">Sunday, 30 August 2026</div>
+              <h4 className="font-serif font-semibold text-lg text-ivory mb-1.5">Wedding Band Announcement</h4>
+              <p className="font-cormorant text-[16.5px] text-ivory-dim leading-relaxed max-w-[52ch]">
+                The wedding bands are announced, once the Pastor returns from his month-long break.
+              </p>
+            </div>
+
+            {/* Item 4 (Key Big Day) */}
+            <div className="tl-item key reveal">
+              <div className="tl-dot"></div>
+              <div className="text-[11px] tracking-[0.22em] uppercase text-gold mb-1.5">Saturday, 10 October 2026</div>
+              <h4 className="font-serif font-semibold text-lg text-ivory mb-1.5">The Wedding Day</h4>
+              <p className="font-cormorant text-[16.5px] text-ivory-dim leading-relaxed max-w-[52ch]">
+                Gift &amp; Asunta say "I do." The day everything has been building toward.
+              </p>
+              <span className="inline-block mt-2 text-[10px] tracking-[0.18em] uppercase text-deep bg-gradient-to-b from-gold-light to-gold px-2.5 py-1 rounded-full font-semibold">
+                The big day
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {/* Portrait / Showcase Section */}
+        <section className="portrait-section max-w-[1040px] px-6 py-[120px] mx-auto grid grid-cols-1 md:grid-cols-[0.85fr_1.15fr] gap-16 items-center">
+          <div className="portrait-frame reveal rounded-2xl overflow-hidden border border-line shadow-2xl relative max-h-[380px] md:max-h-none aspect-[3/4]">
+            <img 
+              src={couplePortrait} 
+              alt="Gift and Asunta Portrait" 
+              className="w-full h-full object-cover block saturate-[1.02]"
+              referrerPolicy="no-referrer"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-deep/0 via-deep/0 to-deep/55"></div>
+          </div>
+          
+          <div className="portrait-copy reveal">
+            <div className="text-[11px] tracking-[0.28em] uppercase text-gold mb-4.5">Gift &amp; Asunta</div>
+            <h3 className="font-serif font-semibold text-[clamp(24px,3.4vw,32px)] text-ivory mb-4.5 leading-snug">
+              Two lives joining as one — and a platform launching alongside them.
+            </h3>
+            <p className="font-cormorant text-[19px] text-ivory-dim leading-relaxed mb-3.5 max-w-[46ch]">
+              Join us as we officially launch the Wedding Platform for our lovely couple, and kick off our Wedding Fundraiser Campaign in the same breath — right after their return from the traditional marriage ceremony in Yei.
+            </p>
+            <p className="font-cormorant text-[19px] text-ivory-dim leading-relaxed max-w-[46ch]">
+              Let's come together to celebrate love, unity, and purpose — a beginning worth witnessing, and a cause worth carrying forward.
+            </p>
+          </div>
+        </section>
+
+        {/* Why Join / Features Grid Section */}
+        <section className="why-section max-w-[1040px] px-6 py-[120px] mx-auto">
+          <div className="reveal text-[11px] tracking-[0.3em] uppercase text-gold mb-4 opacity-90 text-center">
+            Why Be There
+          </div>
+          <h2 className="reveal font-serif font-semibold text-[clamp(26px,4vw,38px)] text-ivory mb-14 text-center">
+            Your presence carries the day
+          </h2>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-7">
+            {/* Feature 1 */}
+            <div className="why-item reveal text-center p-8 border border-line rounded-2xl bg-gradient-to-b from-white/[0.025] to-transparent hover:-translate-y-1.5 hover:border-gold transition-all duration-500 ease-out">
+              <Users className="w-6 h-6 text-gold mx-auto mb-4" />
+              <h5 className="font-serif font-semibold text-[15.5px] text-ivory mb-2">Witness a Historic Moment</h5>
+              <p className="text-xs sm:text-[13px] text-ivory-dim leading-relaxed">Be there as it happens, live and in person.</p>
+            </div>
+            {/* Feature 2 */}
+            <div className="why-item reveal text-center p-8 border border-line rounded-2xl bg-gradient-to-b from-white/[0.025] to-transparent hover:-translate-y-1.5 hover:border-gold transition-all duration-500 ease-out">
+              <Send className="w-6 h-6 text-gold mx-auto mb-4" />
+              <h5 className="font-serif font-semibold text-[15.5px] text-ivory mb-2">Get the Latest Updates</h5>
+              <p className="text-xs sm:text-[13px] text-ivory-dim leading-relaxed">Hear the news first, straight from the source.</p>
+            </div>
+            {/* Feature 3 */}
+            <div className="why-item reveal text-center p-8 border border-line rounded-2xl bg-gradient-to-b from-white/[0.025] to-transparent hover:-translate-y-1.5 hover:border-gold transition-all duration-500 ease-out">
+              <Heart className="w-6 h-6 text-gold mx-auto mb-4" />
+              <h5 className="font-serif font-semibold text-[15.5px] text-ivory mb-2">Support a Great Cause</h5>
+              <p className="text-xs sm:text-[13px] text-ivory-dim leading-relaxed">Every contribution helps their future take shape.</p>
+            </div>
+            {/* Feature 4 */}
+            <div className="why-item reveal text-center p-8 border border-line rounded-2xl bg-gradient-to-b from-white/[0.025] to-transparent hover:-translate-y-1.5 hover:border-gold transition-all duration-500 ease-out">
+              <Compass className="w-6 h-6 text-gold mx-auto mb-4" />
+              <h5 className="font-serif font-semibold text-[15.5px] text-ivory mb-2">Be Part of the Journey</h5>
+              <p className="text-xs sm:text-[13px] text-ivory-dim leading-relaxed">From launch day onward, you're family.</p>
+            </div>
+          </div>
+        </section>
+
+        {/* Pledges & Fundraiser Registry Section */}
+        <section id="pledges" className="pledges-section max-w-[1040px] px-6 py-[120px] mx-auto">
+          <div className="reveal text-[11px] tracking-[0.3em] uppercase text-gold mb-4 opacity-90 text-center">
+            Love & Partnership
+          </div>
+          <h2 className="reveal font-serif font-semibold text-[clamp(26px,4vw,38px)] text-ivory mb-4 text-center">
+            Wedding Fundraiser Campaign
+          </h2>
+          <p className="reveal font-cormorant italic text-lg text-ivory-dim mb-14 text-center max-w-[620px] mx-auto">
+            Help us kick-off our Wedding Campaign. Your support makes our future possible. Register a pledge below and download your printable receipt certificate instantly.
+          </p>
+
+          {/* Goals Dashboard */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16 reveal">
+            {/* USD Card */}
+            <div className="bg-gradient-to-b from-white/[0.035] to-transparent border border-line rounded-2xl p-6.5 relative overflow-hidden">
+              <div className="absolute right-5 top-5 opacity-10">
+                <DollarSign className="w-14 h-14 text-gold" />
+              </div>
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <span className="text-[10px] tracking-[0.2em] uppercase text-gold font-medium block mb-1">United States Dollars</span>
+                  <h4 className="font-serif text-3xl font-bold text-ivory">
+                    ${totalUSD.toLocaleString()} <span className="text-sm font-sans font-normal text-ivory-dim">pledged</span>
+                  </h4>
+                </div>
+                <div className="bg-gold/10 px-2.5 py-1 rounded text-xs text-gold font-mono">
+                  {percentUSD}% Goal
+                </div>
+              </div>
+              <div className="w-full bg-white/5 rounded-full h-2.5 mb-3.5">
+                <div 
+                  className="bg-gradient-to-r from-gold-light to-gold h-2.5 rounded-full shadow-[0_0_12px_rgba(205,164,94,0.4)] transition-all duration-1000"
+                  style={{ width: `${percentUSD}%` }}
+                ></div>
+              </div>
+              <div className="flex justify-between text-xs text-ivory-dim font-mono">
+                <span>Target: ${targetUSD.toLocaleString()}</span>
+                <span>{percentUSD}% Achieved</span>
+              </div>
+            </div>
+
+            {/* SSP Card */}
+            <div className="bg-gradient-to-b from-white/[0.035] to-transparent border border-line rounded-2xl p-6.5 relative overflow-hidden">
+              <div className="absolute right-5 top-5 opacity-10">
+                <Coins className="w-14 h-14 text-gold" />
+              </div>
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <span className="text-[10px] tracking-[0.2em] uppercase text-gold font-medium block mb-1">South Sudan Pounds</span>
+                  <h4 className="font-serif text-3xl font-bold text-ivory">
+                    {totalSSP.toLocaleString()} <span className="text-sm font-sans font-normal text-ivory-dim">SSP pledged</span>
+                  </h4>
+                </div>
+                <div className="bg-gold/10 px-2.5 py-1 rounded text-xs text-gold font-mono">
+                  {percentSSP}% Goal
+                </div>
+              </div>
+              <div className="w-full bg-white/5 rounded-full h-2.5 mb-3.5">
+                <div 
+                  className="bg-gradient-to-r from-gold-light to-gold h-2.5 rounded-full shadow-[0_0_12px_rgba(205,164,94,0.4)] transition-all duration-1000"
+                  style={{ width: `${percentSSP}%` }}
+                ></div>
+              </div>
+              <div className="flex justify-between text-xs text-ivory-dim font-mono">
+                <span>Target: {targetSSP.toLocaleString()} SSP</span>
+                <span>{percentSSP}% Achieved</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-12 items-start reveal">
+            {/* Left: Register form */}
+            <div className="bg-gradient-to-b from-white/[0.02] to-transparent border border-line rounded-2xl p-8 sm:p-10">
+              <div className="flex items-center gap-3 mb-6.5">
+                <div className="w-8 h-8 rounded-full bg-gold/10 flex items-center justify-center">
+                  <Award className="w-4 h-4 text-gold" />
+                </div>
+                <h3 className="font-serif font-semibold text-2xl text-ivory">Register Your Pledge</h3>
+              </div>
+              
+              <form onSubmit={handleAddPledge} className="space-y-5.5">
+                <div>
+                  <label className="block text-xs font-medium tracking-[0.12em] uppercase text-gold-light mb-2">Full Name *</label>
+                  <input 
+                    type="text" 
+                    required
+                    value={pledgeName}
+                    onChange={(e) => setPledgeName(e.target.value)}
+                    placeholder="e.g. James Deng"
+                    className="w-full bg-[#051511]/60 border border-line rounded-xl px-4 py-3.5 text-sm text-ivory placeholder-ivory-dim/45 focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold transition-all duration-300"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-xs font-medium tracking-[0.12em] uppercase text-gold-light mb-2">Email Address</label>
+                    <input 
+                      type="email" 
+                      value={pledgeEmail}
+                      onChange={(e) => setPledgeEmail(e.target.value)}
+                      placeholder="e.g. james@example.com"
+                      className="w-full bg-[#051511]/60 border border-line rounded-xl px-4 py-3.5 text-sm text-ivory placeholder-ivory-dim/45 focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold transition-all duration-300"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium tracking-[0.12em] uppercase text-gold-light mb-2">Phone Number</label>
+                    <input 
+                      type="tel" 
+                      value={pledgePhone}
+                      onChange={(e) => setPledgePhone(e.target.value)}
+                      placeholder="e.g. +211 92 000 0000"
+                      className="w-full bg-[#051511]/60 border border-line rounded-xl px-4 py-3.5 text-sm text-ivory placeholder-ivory-dim/45 focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold transition-all duration-300"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-[1.4fr_0.6fr] gap-5">
+                  <div>
+                    <label className="block text-xs font-medium tracking-[0.12em] uppercase text-gold-light mb-2">Pledge Amount *</label>
+                    <input 
+                      type="number" 
+                      required
+                      min="1"
+                      value={pledgeAmount}
+                      onChange={(e) => setPledgeAmount(e.target.value)}
+                      placeholder="Enter amount"
+                      className="w-full bg-[#051511]/60 border border-line rounded-xl px-4 py-3.5 text-sm text-ivory placeholder-ivory-dim/45 focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold transition-all duration-300 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium tracking-[0.12em] uppercase text-gold-light mb-2">Currency *</label>
+                    <select
+                      value={pledgeCurrency}
+                      onChange={(e) => setPledgeCurrency(e.target.value as 'SSP' | 'USD')}
+                      className="w-full bg-[#051511]/60 border border-line rounded-xl px-4 py-3.5 text-sm text-ivory focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold transition-all duration-300 cursor-pointer"
+                    >
+                      <option value="USD">USD ($)</option>
+                      <option value="SSP">SSP (Pound)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium tracking-[0.12em] uppercase text-gold-light mb-2">Fulfillment Method *</label>
+                  <select
+                    value={pledgeMethod}
+                    onChange={(e) => setPledgeMethod(e.target.value)}
+                    className="w-full bg-[#051511]/60 border border-line rounded-xl px-4 py-3.5 text-sm text-ivory focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold transition-all duration-300 cursor-pointer"
+                  >
+                    <option value="Hand Delivery">Hand Delivery</option>
+                    <option value="Bank Transfer">Bank Transfer (Juba / Watoto)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium tracking-[0.12em] uppercase text-gold-light mb-2">Message for Gift &amp; Asunta</label>
+                  <textarea 
+                    value={pledgeNotes}
+                    onChange={(e) => setPledgeNotes(e.target.value)}
+                    placeholder="Write a warm note of blessing..."
+                    rows={3}
+                    className="w-full bg-[#051511]/60 border border-line rounded-xl px-4 py-3.5 text-sm text-ivory placeholder-ivory-dim/45 focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold transition-all duration-300 resize-none"
+                  ></textarea>
+                </div>
+
+                <button 
+                  type="submit"
+                  className="w-full inline-flex items-center justify-center gap-2 px-7 py-4 rounded-xl text-sm font-medium tracking-wide bg-gradient-to-b from-gold-light to-gold text-[#20180A] shadow-md hover:-translate-y-0.5 hover:shadow-[0_12px_24px_-8px_rgba(205,164,94,0.5)] active:scale-95 transition-all duration-300 cursor-pointer"
+                >
+                  <PlusCircle className="w-4 h-4" />
+                  Register Pledge &amp; Generate Certificate
+                </button>
+              </form>
+            </div>
+
+            {/* Right: Pledge list / registry overview */}
+            <div className="space-y-6.5 w-full">
+              <div className="flex flex-col gap-4">
+                <div className="flex justify-between items-center">
+                  <h3 className="font-serif font-semibold text-xl text-ivory flex items-center gap-2.5">
+                    Recent Pledges
+                    <span className="text-xs font-sans font-normal text-gold bg-gold/10 px-2 py-0.5 rounded-full">
+                      {pledges.length} total
+                    </span>
+                  </h3>
+                </div>
+
+                {/* Filters & Search */}
+                <div className="space-y-3">
+                  <div className="relative">
+                    <Search className="w-4 h-4 text-ivory-dim/60 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input 
+                      type="text" 
+                      value={pledgeSearch}
+                      onChange={(e) => setPledgeSearch(e.target.value)}
+                      placeholder="Search contributor name..."
+                      className="w-full bg-white/[0.02] border border-line rounded-xl pl-10 pr-4 py-2.5 text-xs text-ivory placeholder-ivory-dim/45 focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold transition-all duration-300"
+                    />
+                  </div>
+
+                  <div className="flex gap-2">
+                    {(['ALL', 'USD', 'SSP'] as const).map((filter) => (
+                      <button
+                        key={filter}
+                        onClick={() => setPledgeFilter(filter)}
+                        className={`px-3 py-1.5 rounded-lg text-[11px] font-sans font-medium tracking-wide transition-all cursor-pointer ${
+                          pledgeFilter === filter
+                            ? 'bg-gold text-deep'
+                            : 'bg-white/[0.02] border border-line text-ivory-dim hover:text-ivory hover:border-gold/50'
+                        }`}
+                      >
+                        {filter === 'ALL' ? 'All Currencies' : filter}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Pledges list */}
+              <div className="space-y-4 max-h-[580px] overflow-y-auto pr-2 custom-scrollbar">
+                {filteredPledges.length === 0 ? (
+                  <div className="text-center py-12 border border-dashed border-line rounded-2xl bg-white/[0.01]">
+                    <p className="text-sm text-ivory-dim">No pledges found matching your criteria.</p>
+                  </div>
+                ) : (
+                  filteredPledges.map((pledge) => (
+                    <div 
+                      key={pledge.id}
+                      className="p-5 border border-line rounded-xl bg-gradient-to-b from-white/[0.025] to-transparent hover:border-gold/45 transition-all duration-300 relative group"
+                    >
+                      <div className="flex justify-between items-start gap-4 mb-2">
+                        <div>
+                          <h4 className="font-serif font-semibold text-base text-ivory">{pledge.name}</h4>
+                          <span className="text-[10px] font-mono text-ivory-dim">Ref: GA-2026-{pledge.id.slice(-4)}</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-sans font-bold text-base text-gold block">
+                            {pledge.currency === 'USD' ? '$' : ''}
+                            {pledge.amount.toLocaleString()}
+                            {pledge.currency === 'SSP' ? ' SSP' : ''}
+                          </span>
+                          <span className="text-[9px] font-sans uppercase tracking-wider text-ivory-dim block mt-0.5">
+                            {pledge.paymentMethod.split(' ')[0]}
+                          </span>
+                        </div>
+                      </div>
+
+                      {pledge.notes && (
+                        <p className="font-cormorant italic text-[14.5px] text-ivory-dim leading-relaxed mb-4 border-l border-gold/30 pl-3 py-0.5">
+                          "{pledge.notes}"
+                        </p>
+                      )}
+
+                      <div className="flex items-center justify-between mt-3.5 pt-3.5 border-t border-line/50">
+                        <span className="text-[10px] font-sans text-ivory-dim/60">
+                          Registered {pledge.date}
+                        </span>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => downloadPledgePdf(pledge)}
+                            title="Download PDF Certificate"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded bg-gold/10 hover:bg-gold/25 border border-gold/20 text-[10px] font-medium text-gold tracking-wide transition-all cursor-pointer"
+                          >
+                            <FileText className="w-3 h-3" />
+                            PDF
+                          </button>
+                          <button
+                            onClick={() => downloadPledgeDoc(pledge)}
+                            title="Download Word/Google Doc"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded bg-white/5 hover:bg-white/10 border border-line text-[10px] font-medium text-ivory-dim hover:text-ivory tracking-wide transition-all cursor-pointer"
+                          >
+                            <FileDown className="w-3 h-3" />
+                            Doc
+                          </button>
+                          <button
+                            onClick={() => handleDeletePledge(pledge.id)}
+                            title="Remove Pledge"
+                            className="p-1.5 rounded hover:bg-red-500/15 border border-transparent hover:border-red-500/20 text-ivory-dim hover:text-red-400 transition-all cursor-pointer"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Custom Blockquote Quote Section */}
+        <section className="message-section max-w-[1040px] px-6 py-[120px] mx-auto text-center">
+          <blockquote className="reveal font-cormorant italic text-[clamp(20px,2.8vw,27px)] text-ivory leading-relaxed max-w-[720px] mx-auto">
+            "Love is the reason. Unity is the mission. You are the family. Your presence, your support, our future."
+          </blockquote>
+          <div className="attribution reveal mt-6.5 text-xs tracking-[0.2em] uppercase text-gold">
+            — Gift &amp; Asunta
+          </div>
+        </section>
+
+        {/* CTA Section */}
+        <section className="cta-section max-w-[1040px] px-6 py-[120px] mx-auto text-center">
+          <div className="cta-box reveal border border-line rounded-3xl p-8 sm:p-16 bg-[radial-gradient(circle_at_50%_0%,_rgba(205,164,94,0.08),_transparent_60%)]">
+            <h3 className="font-serif font-semibold text-[clamp(24px,3.6vw,34px)] text-ivory mb-3.5">
+              Don't miss it
+            </h3>
+            <p className="font-cormorant text-lg text-ivory-dim mb-9">
+              Save the date, and let's celebrate this together.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-stretch sm:items-center">
+              <button 
+                onClick={handleAddToCalendar}
+                className="inline-flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-full text-sm font-medium tracking-wide bg-gradient-to-b from-gold-light to-gold text-[#20180A] shadow-md hover:-translate-y-0.5 hover:shadow-[0_12px_24px_-8px_rgba(205,164,94,0.5)] active:scale-95 transition-all duration-300 cursor-pointer"
+              >
+                Add to Calendar
+              </button>
+              <button 
+                onClick={openShare}
+                className="inline-flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-full text-sm font-medium tracking-wide bg-transparent border border-line text-ivory hover:border-gold active:scale-95 transition-all duration-300 cursor-pointer"
+              >
+                Share the Invitation
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Footer */}
+        <footer className="px-6 pb-[70px] pt-[90px] text-center border-t border-line/10">
+          <div className="foot-seal reveal w-[150px] h-[150px] rounded-full mx-auto mb-8.5 border-[1.5px] border-dashed border-gold/55 flex items-center justify-center">
+            <div className="foot-seal-inner w-[126px] h-[126px] rounded-full bg-[radial-gradient(circle_at_35%_25%,_#E7C67C,_#A6822F_75%)] flex items-center justify-center text-center p-2 text-[#2B2007] font-serif text-[12.5px] leading-relaxed shadow-lg">
+              <span>
+                <b className="block text-sm font-bold mb-0.5">Love</b> is the reason.<br />
+                <b className="block text-sm font-bold my-0.5">Unity</b> is the mission.<br />
+                You are the family.
+              </span>
+            </div>
+          </div>
+          <p className="fine reveal text-xs text-ivory-dim tracking-wide mb-1.5 font-sans">
+            Gift &amp; Asunta · Platform Launch &amp; Wedding Fundraiser Campaign
+          </p>
+          <p className="fine reveal text-xs text-ivory-dim tracking-wide mb-1.5 font-sans">
+            Wedding Launch · Sunday, 26 July 2026 at 3:00 PM · Watoto Church, Juba
+          </p>
+          <p className="fine reveal text-xs text-ivory-dim tracking-wide font-sans">
+            Wedding Day · Saturday, 10 October 2026
+          </p>
+        </footer>
+
+      </main>
+
+      {/* ================= SHARE SHEET OVERLAY ================= */}
+      <div 
+        className={`share-overlay ${isShareOpen ? 'open' : ''}`} 
+        onClick={(e) => { if(e.target === e.currentTarget) closeShare(); }}
+      >
+        <div className="share-sheet" role="dialog" aria-modal="true" aria-label="Share this invitation">
+          <div className="w-10 h-1 rounded-full bg-gold/40 mx-auto mb-5"></div>
+          
+          <div className="text-center mb-5.5 relative">
+            <button 
+              onClick={closeShare}
+              className="absolute right-0 top-0 text-ivory-dim hover:text-gold hover:scale-105 transition-all p-1"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="text-[10px] tracking-[0.3em] uppercase text-gold mb-2 font-sans">Pass it on</div>
+            <h4 className="font-serif font-semibold text-[21px] text-ivory">Share the invitation</h4>
+            <p className="font-cormorant italic text-base text-ivory-dim mt-1">Invite someone to be part of the family</p>
+          </div>
+
+          <div className="grid grid-cols-4 gap-2.5 mb-4.5">
+            {/* WhatsApp option */}
+            <button 
+              onClick={shareWhatsApp}
+              className="flex flex-col items-center gap-2 p-4 border border-line rounded-2xl bg-white/[0.02] hover:-translate-y-1 hover:border-gold hover:bg-gold/5 active:scale-95 transition-all duration-300 cursor-pointer text-ivory"
+            >
+              <div className="w-[38px] h-[38px] rounded-full flex items-center justify-center bg-gold/12">
+                <MessageSquare className="w-5 h-5 text-[#25D366] fill-[#25D366]" />
+              </div>
+              <span className="text-[11px] tracking-wide text-ivory-dim">WhatsApp</span>
+            </button>
+
+            {/* Native Sharing option (More) */}
+            <button 
+              onClick={shareNative}
+              className="flex flex-col items-center gap-2 p-4 border border-line rounded-2xl bg-white/[0.02] hover:-translate-y-1 hover:border-gold hover:bg-gold/5 active:scale-95 transition-all duration-300 cursor-pointer text-ivory"
+            >
+              <div className="w-[38px] h-[38px] rounded-full flex items-center justify-center bg-gold/12">
+                <Share2 className="w-5 h-5 text-gold" />
+              </div>
+              <span className="text-[11px] tracking-wide text-ivory-dim">More</span>
+            </button>
+
+            {/* Email Option */}
+            <button 
+              onClick={shareEmail}
+              className="flex flex-col items-center gap-2 p-4 border border-line rounded-2xl bg-white/[0.02] hover:-translate-y-1 hover:border-gold hover:bg-gold/5 active:scale-95 transition-all duration-300 cursor-pointer text-ivory"
+            >
+              <div className="w-[38px] h-[38px] rounded-full flex items-center justify-center bg-gold/12">
+                <Mail className="w-5 h-5 text-gold" />
+              </div>
+              <span className="text-[11px] tracking-wide text-ivory-dim">Email</span>
+            </button>
+
+            {/* Copy option */}
+            <button 
+              onClick={handleCopyLink}
+              className="flex flex-col items-center gap-2 p-4 border border-line rounded-2xl bg-white/[0.02] hover:-translate-y-1 hover:border-gold hover:bg-gold/5 active:scale-95 transition-all duration-300 cursor-pointer text-ivory"
+            >
+              <div className="w-[38px] h-[38px] rounded-full flex items-center justify-center bg-gold/12">
+                <Copy className="w-5 h-5 text-gold" />
+              </div>
+              <span className="text-[11px] tracking-wide text-ivory-dim">Copy link</span>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2.5 border border-line rounded-full p-1.5 pl-4.5 bg-black/20">
+            <input 
+              id="shareLinkInput" 
+              type="text" 
+              readOnly 
+              value={shareLink}
+              className="flex-1 bg-transparent border-none outline-none text-ivory-dim text-[12.5px] font-sans text-ellipsis"
+            />
+            <button 
+              onClick={handleCopyLink}
+              className="shrink-0 px-4 py-2.5 rounded-full border-none cursor-pointer bg-gradient-to-b from-gold-light to-gold text-[#20180A] text-[12.5px] font-bold active:scale-94 transition-all"
+            >
+              Copy
+            </button>
+          </div>
+
+          <button 
+            onClick={closeShare}
+            className="block mx-auto mt-4.5 bg-none border-none text-ivory-dim text-xs tracking-widest uppercase cursor-pointer hover:text-gold transition-colors font-sans"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+
+      {/* Custom toast notification */}
+      <div className={`toast ${showToast ? 'show' : ''}`} id="toast">
+        {toastMessage}
+      </div>
+    </div>
+  );
+}

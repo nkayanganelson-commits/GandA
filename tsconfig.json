@@ -1,0 +1,6 @@
+{
+  "name": "Gift & Asunta",
+  "description": "Wedding Launch & Fundraiser Campaign for Gift & Asunta. Explore the journey, view countdowns, and add event reminders to your calendar.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
